@@ -1200,7 +1200,7 @@ class KubeSpawner(Spawner):
         """,
     )
 
-    extra_storage_config = Dict(
+    extra_storage = Dict(
         key_trait=Unicode(),
         per_key_traits={
             "storage_capacity": Unicode(),
@@ -2166,7 +2166,7 @@ class KubeSpawner(Spawner):
             annotations=annotations,
         )]
 
-        for name, config in self.extra_storage_config.items():
+        for name, config in self.extra_storage.items():
             # In case the config is 'None'
             config = config or {}
 

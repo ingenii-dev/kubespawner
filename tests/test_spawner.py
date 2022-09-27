@@ -599,7 +599,7 @@ async def test_get_pvc_manifest_extra():
     c.KubeSpawner.storage_extra_annotations = {"user": "{username}"}
     c.KubeSpawner.storage_selector = {"matchLabels": {"user": "{username}"}}
 
-    c.KubeSpawner.extra_storage_config = {
+    c.KubeSpawner.extra_storage = {
         "extra": {
             "storage_extra_labels": {"extra": "extra-label-{username}"},
             "storage_extra_annotations": {"extra": "extra-annotation-{username}"},
