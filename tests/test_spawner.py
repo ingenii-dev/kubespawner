@@ -569,7 +569,11 @@ async def test_get_pvc_manifest():
 
     spawner = KubeSpawner(config=c, _mock=True)
 
-    manifest = spawner.get_pvc_manifest()
+    manifests = spawner.get_pvc_manifests()
+
+    assert len(manifests) == 1
+
+    manifest = manifests[0]
 
     assert isinstance(manifest, V1PersistentVolumeClaim)
     assert manifest.metadata.name == "user-mock-5fname"
@@ -701,7 +705,7 @@ async def test_variable_expansion(ssl_app):
 
     manifests = {
         "pod": await spawner.get_pod_manifest(),
-        "pvc": spawner.get_pvc_manifest(),
+        "pvc": spawner.get_pvc_manifests()[0],
         "secret": spawner.get_secret_manifest("dummy-owner-ref"),
         "service": spawner.get_service_manifest("dummy-owner-ref"),
     }

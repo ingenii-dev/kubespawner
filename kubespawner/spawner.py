@@ -1200,6 +1200,26 @@ class KubeSpawner(Spawner):
         """,
     )
 
+    extra_storage_config = Dict(
+        config=True,
+        help="""
+        Details of any extra per-user storage to be created.
+
+        The 'main' storage details are used as defaults for any missing required details.
+
+        The key of this dictionary is the 'name' of the extra storage, used for names to guarantee uniqueness.
+
+        The value of this dictionary is also a dictionary passing the storage details. The keys are the same as the configuration values of the 'main' storage:
+
+            - `storage_capacity`
+            - `storage_extra_annotations`
+            - `storage_extra_labels`
+            - `storage_class`
+            - `storage_access_modes`
+            - `storage_selector`
+        """,
+    )
+
     lifecycle_hooks = Dict(
         config=True,
         help="""
@@ -2108,7 +2128,7 @@ class KubeSpawner(Spawner):
             annotations=annotations,
         )
 
-    def get_pvc_manifest(self):
+    def get_pvc_manifests(self):
         """
         Make a pvc manifest that will spawn current user's pvc.
         """
@@ -2121,15 +2141,49 @@ class KubeSpawner(Spawner):
 
         storage_selector = self._expand_all(self.storage_selector)
 
-        return make_pvc(
-            name=self.pvc_name,
-            storage_class=self.storage_class,
-            access_modes=self.storage_access_modes,
+        main_name = self.pvc_name
+        main_class = self.storage_class
+        main_access_modes = self.storage_access_modes
+        main_capacity = self.storage_capacity
+
+        main_pvc = make_pvc(
+            name=main_name,
+            storage_class=main_class,
+            access_modes=main_access_modes,
             selector=storage_selector,
-            storage=self.storage_capacity,
+            storage=main_capacity,
             labels=labels,
             annotations=annotations,
         )
+
+        # In case the value is 'None'
+        extra_pvc_configs = {
+            name: self.extra_storage_config.get(name, {})
+            for name in self.extra_storage_config
+        }
+        extra_pvcs = [
+            make_pvc(
+                name=f"{main_name}-{self._expand_user_properties(name)}",
+                storage_class=config.get("storage_class", main_class),
+                access_modes=config.get("storage_access_modes", main_access_modes),
+                storage=config.get("storage_capacity", main_capacity),
+                selector={
+                    **storage_selector,
+                    **self._expand_all(config.get("storage_selector", {})),
+                },
+                labels={
+                    **labels,
+                    **self._expand_all(config.get("storage_extra_labels", {})),
+                },
+                annotations={
+                    **annotations,
+                    **self._expand_all(config.get("storage_extra_annotations", {})),
+                },
+            )
+            for name, config in extra_pvc_configs.items()
+        ]
+
+        return [main_pvc] + extra_pvcs
 
     def is_pod_running(self, pod):
         """
@@ -2639,17 +2693,18 @@ class KubeSpawner(Spawner):
             self._last_event = events[-1]["metadata"]["uid"]
 
         if self.storage_pvc_ensure:
-            pvc = self.get_pvc_manifest()
+            pvcs = self.get_pvc_manifests()
 
-            # If there's a timeout, just let it propagate
-            await exponential_backoff(
-                partial(
-                    self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
-                ),
-                f'Could not create PVC {self.pvc_name}',
-                # Each req should be given k8s_api_request_timeout seconds.
-                timeout=self.k8s_api_request_retry_timeout,
-            )
+            for pvc in pvcs:
+                # If there's a timeout, just let it propagate
+                await exponential_backoff(
+                    partial(
+                        self._make_create_pvc_request, pvc, self.k8s_api_request_timeout
+                    ),
+                    f'Could not create PVC {self.pvc_name}',
+                    # Each req should be given k8s_api_request_timeout seconds.
+                    timeout=self.k8s_api_request_retry_timeout,
+                )
 
         # If we run into a 409 Conflict error, it means a pod with the
         # same name already exists. We stop it, wait for it to stop, and
