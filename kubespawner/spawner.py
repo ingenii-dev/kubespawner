@@ -2146,7 +2146,8 @@ class KubeSpawner(Spawner):
         main_access_modes = self.storage_access_modes
         main_capacity = self.storage_capacity
 
-        main_pvc = make_pvc(
+        # Returns a list, so start with a list of 1 entry
+        all_pvcs = [make_pvc(
             name=main_name,
             storage_class=main_class,
             access_modes=main_access_modes,
@@ -2154,15 +2155,13 @@ class KubeSpawner(Spawner):
             storage=main_capacity,
             labels=labels,
             annotations=annotations,
-        )
+        )]
 
-        # In case the value is 'None'
-        extra_pvc_configs = {
-            name: self.extra_storage_config.get(name) or {}
-            for name in self.extra_storage_config
-        }
-        extra_pvcs = [
-            make_pvc(
+        for name, config in self.extra_storage_config.items():
+            # In case the config is 'None'
+            config = config or {}
+
+            all_pvcs.append(make_pvc(
                 name=f"{main_name}-{self._expand_user_properties(name)}",
                 storage_class=config.get("storage_class", main_class),
                 access_modes=config.get("storage_access_modes", main_access_modes),
@@ -2181,11 +2180,9 @@ class KubeSpawner(Spawner):
                     **{"extra-storage-name": name},
                     **self._expand_all(config.get("storage_extra_annotations", {})),
                 },
-            )
-            for name, config in extra_pvc_configs.items()
-        ]
+            ))
 
-        return [main_pvc] + extra_pvcs
+        return all_pvcs
 
     def is_pod_running(self, pod):
         """
