@@ -2158,7 +2158,7 @@ class KubeSpawner(Spawner):
 
         # In case the value is 'None'
         extra_pvc_configs = {
-            name: self.extra_storage_config.get(name, {})
+            name: self.extra_storage_config.get(name) or {}
             for name in self.extra_storage_config
         }
         extra_pvcs = [
@@ -2173,10 +2173,12 @@ class KubeSpawner(Spawner):
                 },
                 labels={
                     **labels,
+                    **{"extra-name": name},
                     **self._expand_all(config.get("storage_extra_labels", {})),
                 },
                 annotations={
                     **annotations,
+                    **{"extra-name": name},
                     **self._expand_all(config.get("storage_extra_annotations", {})),
                 },
             )

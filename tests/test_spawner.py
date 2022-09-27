@@ -591,6 +591,82 @@ async def test_get_pvc_manifest():
     assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
 
 
+async def test_get_pvc_manifest_extra():
+    c = Config()
+
+    c.KubeSpawner.pvc_name_template = "user-{username}"
+    c.KubeSpawner.storage_extra_labels = {"user": "{username}"}
+    c.KubeSpawner.storage_extra_annotations = {"user": "{username}"}
+    c.KubeSpawner.storage_selector = {"matchLabels": {"user": "{username}"}}
+
+    c.KubeSpawner.extra_storage_config = {
+        "extra": {
+            "storage_extra_labels": {"extra": "extra-label-{username}"},
+            "storage_extra_annotations": {"extra": "extra-annotation-{username}"},
+            "storage_selector": {"matchLabels": {"extra": "extra-{username}"}}
+        },
+        "extra2": None,
+    }
+    
+    spawner = KubeSpawner(config=c, _mock=True)
+
+    manifests = spawner.get_pvc_manifests()
+
+    assert len(manifests) == 3
+
+    main_name = "user-mock-5fname"
+    main_labels = {
+        "user": "mock-5fname",
+        "hub.jupyter.org/username": "mock-5fname",
+        "app": "jupyterhub",
+        "component": "singleuser-storage",
+        "heritage": "jupyterhub",
+    }
+    main_annotations = {
+        "user": "mock-5fname",
+        "hub.jupyter.org/username": "mock_name",
+    }
+
+    # Main manifest
+    manifest = manifests[0]
+
+    assert isinstance(manifest, V1PersistentVolumeClaim)
+    assert manifest.metadata.name == main_name
+    assert manifest.metadata.labels == main_labels
+    assert manifest.metadata.annotations == main_annotations
+    assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
+
+    # Extra manifest, defined
+    manifest = manifests[1]
+    assert isinstance(manifest, V1PersistentVolumeClaim)
+    assert manifest.metadata.name == f"{main_name}-extra"
+    assert manifest.metadata.labels == {
+        **main_labels,
+        "extra-name": "extra",
+        "extra": "extra-label-mock-5fname"
+    }
+    assert manifest.metadata.annotations == {
+        **main_annotations,
+        "extra-name": "extra",
+        "extra": "extra-annotation-mock-5fname",
+    }
+    assert manifest.spec.selector == {"matchLabels": {"extra": "extra-mock-5fname"}}
+
+    # Extra manifest, defaults
+    manifest = manifests[2]
+    assert isinstance(manifest, V1PersistentVolumeClaim)
+    assert manifest.metadata.name == f"{main_name}-extra2"
+    assert manifest.metadata.labels == {
+        **main_labels,
+        "extra-name": "extra2",
+    }
+    assert manifest.metadata.annotations == {
+        **main_annotations,
+        "extra-name": "extra2",
+    }
+    assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
+
+
 async def test_variable_expansion(ssl_app):
     """
     Variable expansion not tested here:
