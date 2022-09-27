@@ -2173,12 +2173,12 @@ class KubeSpawner(Spawner):
                 },
                 labels={
                     **labels,
-                    **{"extra-name": name},
+                    **{"extra-storage-name": name},
                     **self._expand_all(config.get("storage_extra_labels", {})),
                 },
                 annotations={
                     **annotations,
-                    **{"extra-name": name},
+                    **{"extra-storage-name": name},
                     **self._expand_all(config.get("storage_extra_annotations", {})),
                 },
             )

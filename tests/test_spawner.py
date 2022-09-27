@@ -642,12 +642,12 @@ async def test_get_pvc_manifest_extra():
     assert manifest.metadata.name == f"{main_name}-extra"
     assert manifest.metadata.labels == {
         **main_labels,
-        "extra-name": "extra",
+        "extra-storage-name": "extra",
         "extra": "extra-label-mock-5fname"
     }
     assert manifest.metadata.annotations == {
         **main_annotations,
-        "extra-name": "extra",
+        "extra-storage-name": "extra",
         "extra": "extra-annotation-mock-5fname",
     }
     assert manifest.spec.selector == {"matchLabels": {"extra": "extra-mock-5fname"}}
@@ -658,11 +658,11 @@ async def test_get_pvc_manifest_extra():
     assert manifest.metadata.name == f"{main_name}-extra2"
     assert manifest.metadata.labels == {
         **main_labels,
-        "extra-name": "extra2",
+        "extra-storage-name": "extra2",
     }
     assert manifest.metadata.annotations == {
         **main_annotations,
-        "extra-name": "extra2",
+        "extra-storage-name": "extra2",
     }
     assert manifest.spec.selector == {"matchLabels": {"user": "mock-5fname"}}
 
