@@ -1201,6 +1201,15 @@ class KubeSpawner(Spawner):
     )
 
     extra_storage_config = Dict(
+        key_trait=Unicode(),
+        per_key_traits={
+            "storage_capacity": Unicode(),
+            "storage_extra_annotations": Dict(key_trait=Unicode(), value_trait=Unicode()),
+            "storage_extra_labels": Dict(key_trait=Unicode(), value_trait=Unicode()),
+            "storage_class": Unicode(),
+            "storage_access_modes": List(Unicode()),
+            "storage_selector": Dict(key_trait=Unicode()),
+        },
         config=True,
         help="""
         Details of any extra per-user storage to be created.
